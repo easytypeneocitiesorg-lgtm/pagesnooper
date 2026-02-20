@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Site File Viewer</title>
+  <style>
+    body { font-family: monospace; display: flex; height: 100vh; margin: 0; }
+    #sidebar { width: 30%; border-right: 1px solid #ccc; overflow-y: auto; padding: 10px; }
+    #viewer { width: 70%; padding: 10px; overflow-y: auto; white-space: pre-wrap; }
+    button { width: 100%; margin-bottom: 5px; }
+  </style>
+</head>
+<body>
+
+<div id="sidebar">
+  <input type="text" id="urlInput" placeholder="Enter website URL" style="width:100%;" />
+  <button onclick="analyze()">Analyze</button>
+  <div id="files"></div>
+</div>
+
+<div id="viewer"></div>
+
+<script>
+async function analyze() {
+  const url = document.getElementById("urlInput").value;
+  const res = await fetch(`/api/fetch?url=${encodeURIComponent(url)}`);
+  const html = await res.text();
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+
+  const filesDiv = document.getElementById("files");
+  filesDiv.innerHTML = "";
+
+  const files = [];
+
+  files.push({ name: "index.html", url });
+
+  doc.querySelectorAll("link[rel='stylesheet']").forEach(link => {
+    let href = new URL(link.href, url).href;
+    files.push({ name: href.split("/").pop(), url: href });
+  });
+
+  doc.querySelectorAll("script[src]").forEach(script => {
+    let src = new URL(script.src, url).href;
+    files.push({ name: src.split("/").pop(), url: src });
+  });
+
+  files.forEach(file => {
+    const btn = document.createElement("button");
+    btn.textContent = file.name;
+    btn.onclick = () => loadFile(file.url);
+    filesDiv.appendChild(btn);
+  });
+}
+
+async function loadFile(fileUrl) {
+  const res = await fetch(`/api/fetch?url=${encodeURIComponent(fileUrl)}`);
+  const text = await res.text();
+  document.getElementById("viewer").textContent = text;
+}
+</script>
+
+</body>
+</html>
